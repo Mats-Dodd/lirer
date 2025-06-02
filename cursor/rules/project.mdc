@@ -3,4 +3,92 @@ description:
 globs: 
 alwaysApply: true
 ---
-This is a tauri app with a react/vite frontend using tailwind css v4 and shadcn.  It implements a basic and modern rss reader.  
+# Reader - RSS Reader Application
+
+This is a modern cross-platform RSS reader built with Tauri v2, featuring a React frontend and Rust backend.
+
+## Tech Stack
+
+**Frontend:**
+- React 18 with TypeScript
+- Vite for build tooling and development server
+- Tailwind CSS v4 for styling
+- shadcn/ui component library (built on Radix UI primitives)
+- Lucide React for icons
+
+**Backend:**
+- Tauri v2 for native desktop app framework
+- Rust for backend logic and system integration
+- Sea-ORM for database operations (PostgreSQL)
+- Serde for JSON serialization
+
+## Project Structure
+
+### Frontend (`/src/`)
+```
+src/
+├── App.tsx          # Main application component and routing
+├── main.tsx         # React app entry point
+├── index.css        # Global styles and Tailwind imports
+├── components/      # Reusable UI components
+│   └── ui/          # shadcn/ui components
+├── lib/             # Utility functions and shared logic
+└── assets/          # Static assets (images, fonts, etc.)
+```
+
+### Backend (`/src-tauri/src/`)
+```
+src-tauri/src/
+├── main.rs          # Tauri application entry point
+├── lib.rs           # Library exports and app setup
+├── commands/        # Tauri command handlers (API endpoints)
+├── models/          # Data models and business logic
+└── entities/        # Database entity definitions (Sea-ORM)
+```
+
+### Configuration & Build
+```
+├── package.json           # Frontend dependencies and scripts
+├── src-tauri/Cargo.toml   # Rust dependencies and configuration
+├── vite.config.ts         # Vite build configuration
+├── components.json        # shadcn/ui component configuration
+├── tsconfig.json          # TypeScript configuration
+└── index.html             # HTML entry point
+```
+
+### Development Tools
+```
+cursor/
+└── rules/                 # Cursor IDE rules and documentation
+```
+
+## Key Features & Architecture
+
+- **Cross-platform**: Runs on Windows, macOS, and Linux via Tauri
+- **Modern UI**: Clean, responsive interface built with shadcn/ui components
+- **Type-safe**: Full TypeScript on frontend, Rust type safety on backend
+- **Database**: PostgreSQL with Sea-ORM for reliable data persistence
+- **Performance**: Rust backend provides fast RSS feed processing
+
+## Getting Started
+
+**Development:**
+```bash
+pnpm install          # Install frontend dependencies
+pnpm tauri dev    # Start Tauri development mode
+```
+
+**Build:**
+```bash
+pnpm run build        # Build frontend
+pnpm run tauri build  # Build desktop application
+```
+
+## Navigation Guide for Developers
+
+- **UI Components**: Look in `/src/components/` for reusable React components
+- **API Endpoints**: Tauri commands are defined in `/src-tauri/src/commands/`
+- **Database Models**: Entity definitions in `/src-tauri/src/entities/`
+- **Business Logic**: Core logic in `/src-tauri/src/models/`
+- **Styling**: Tailwind classes throughout components, global styles in `/src/index.css`
+- **Type Definitions**: TypeScript types co-located with components or in dedicated `.d.ts` files
