@@ -1,0 +1,6 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+This is a tauri app with a react/vite frontend using tailwind css v4 and shadcn.  It implements a basic and modern rss reader.  
