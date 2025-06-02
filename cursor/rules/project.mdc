@@ -15,6 +15,7 @@ This is a modern cross-platform RSS reader built with Tauri v2, featuring a Reac
 - Tailwind CSS v4 for styling
 - shadcn/ui component library (built on Radix UI primitives)
 - Lucide React for icons
+-TanStack Query for all data fetching
 
 **Backend:**
 - Tauri v2 for native desktop app framework
