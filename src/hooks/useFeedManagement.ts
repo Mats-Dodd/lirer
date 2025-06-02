@@ -1,45 +1,82 @@
-import { useState, useEffect, useCallback } from "react"
-import { FeedResponse } from "../types/feed"
-import { useFeedsApi } from "./useFeedsApi"
+import { useState, useCallback } from 'react'
+import { useFeeds, useCreateFeed, useDeleteFeed } from './useFeeds'
+import { MessageState } from '../types/feed'
 
 export const useFeedManagement = () => {
-  const [feeds, setFeeds] = useState<FeedResponse[]>([])
-  const feedsApi = useFeedsApi()
+  const [message, setMessage] = useState<MessageState | null>(null)
+  
+  // TanStack Query hooks
+  const { data: feeds = [], isLoading: isFeedsLoading, error: feedsError } = useFeeds()
+  const createFeedMutation = useCreateFeed()
+  const deleteFeedMutation = useDeleteFeed()
 
-  const loadFeeds = useCallback(async () => {
-    const feedsData = await feedsApi.getAllFeeds()
-    setFeeds(feedsData)
-  }, [feedsApi])
+  const clearMessage = useCallback(() => {
+    setMessage(null)
+  }, [])
 
-  const handleCreateFeed = useCallback(async (url: string) => {
-    const newFeed = await feedsApi.createFeed(url)
-    if (newFeed) {
-      await loadFeeds() // Refresh the feeds list
+  const showMessage = useCallback((text: string, type: 'success' | 'error') => {
+    setMessage({ text, type })
+  }, [])
+
+  const createFeed = useCallback(async (url: string): Promise<boolean> => {
+    if (!url.trim()) {
+      showMessage("Please enter a feed URL", 'error')
+      return false
+    }
+
+    clearMessage()
+
+    try {
+      // Validate URL format
+      new URL(url)
+      
+      await createFeedMutation.mutateAsync({
+        url: url.trim(),
+        title: undefined,
+        description: undefined
+      })
+      
+      showMessage("Feed saved successfully!", 'success')
       return true
+      
+    } catch (error) {
+      if (error instanceof TypeError) {
+        showMessage("Please enter a valid URL", 'error')
+      } else {
+        showMessage(`Error: ${error}`, 'error')
+      }
+      return false
     }
-    return false
-  }, [feedsApi, loadFeeds])
+  }, [createFeedMutation, showMessage, clearMessage])
 
-  const handleDeleteFeed = useCallback(async (id: number) => {
-    const success = await feedsApi.deleteFeed(id)
-    if (success) {
-      await loadFeeds() // Refresh the feeds list
+  const deleteFeed = useCallback(async (id: number): Promise<boolean> => {
+    try {
+      await deleteFeedMutation.mutateAsync(id)
+      showMessage("Feed deleted successfully!", 'success')
+      return true
+    } catch (error) {
+      showMessage(`Error deleting feed: ${error}`, 'error')
+      return false
     }
-    return success
-  }, [feedsApi, loadFeeds])
+  }, [deleteFeedMutation, showMessage])
 
-  // Load feeds on mount
-  useEffect(() => {
-    loadFeeds()
-  }, [loadFeeds])
+  // Combine loading states from queries and mutations
+  const isLoading = isFeedsLoading || createFeedMutation.isPending || deleteFeedMutation.isPending
+
+  // Handle query errors
+  if (feedsError) {
+    console.error("Failed to load feeds:", feedsError)
+    if (!message) {
+      showMessage(`Error loading feeds: ${feedsError}`, 'error')
+    }
+  }
 
   return {
     feeds,
-    isLoading: feedsApi.isLoading,
-    message: feedsApi.message,
-    clearMessage: feedsApi.clearMessage,
-    createFeed: handleCreateFeed,
-    deleteFeed: handleDeleteFeed,
-    refreshFeeds: loadFeeds
+    isLoading,
+    message,
+    clearMessage,
+    createFeed,
+    deleteFeed
   }
 } 

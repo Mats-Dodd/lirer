@@ -1,2 +1,2 @@
-export { useFeedsApi } from './useFeedsApi'
-export { useFeedManagement } from './useFeedManagement' 
+export { useFeedManagement } from './useFeedManagement'
+export { useFeeds, useCreateFeed, useDeleteFeed, feedKeys } from './useFeeds' 
