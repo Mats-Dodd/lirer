@@ -2,7 +2,7 @@ use sea_orm::*;
 use tauri::State;
 use chrono;
 use crate::entities::{prelude::*, *};
-use crate::models::{AppState, CreateFeedRequest, UpdateFeedRequest, FeedResponse};
+use crate::models::{AppState, CreateFeedRequest, UpdateFeedRequest, FeedResponse, fetch_and_parse_feed, parse_feed_content, ParsedFeed};
 
 // CREATE - Insert a new feed
 #[tauri::command]
@@ -182,4 +182,19 @@ pub async fn delete_feed(state: State<'_, AppState>, id: i32) -> Result<String, 
 #[tauri::command]
 pub fn greet(name: &str) -> String {
     format!("Hello, {}! You've been greeted from Rust!", name)
+}
+
+// FEED PARSING COMMANDS
+
+#[tauri::command]
+pub async fn fetch_and_parse_feed_command(url: String) -> Result<ParsedFeed, String> {
+    fetch_and_parse_feed(&url)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn parse_feed_content_command(content: String) -> Result<ParsedFeed, String> {
+    parse_feed_content(&content)
+        .map_err(|e| e.to_string())
 } 

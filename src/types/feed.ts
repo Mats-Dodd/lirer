@@ -21,4 +21,19 @@ export interface FeedFormData {
 export interface MessageState {
   text: string
   type: 'success' | 'error'
+}
+
+export interface ParsedEntry {
+  title?: string
+  description?: string
+  link?: string
+  published?: string
+  content?: string
+}
+
+export interface ParsedFeed {
+  title: string
+  description?: string
+  url?: string
+  entries: ParsedEntry[]
 } 

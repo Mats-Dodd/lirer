@@ -27,6 +27,7 @@ pub fn run() {
         tauri::Builder::default()
             .manage(app_state)
             .plugin(tauri_plugin_opener::init())
+            .plugin(tauri_plugin_http::init())
             .invoke_handler(tauri::generate_handler![
                 greet,
                 create_feed,
@@ -35,7 +36,9 @@ pub fn run() {
                 get_feed_by_url,
                 update_feed,
                 update_feed_last_fetched,
-                delete_feed
+                delete_feed,
+                fetch_and_parse_feed_command,
+                parse_feed_content_command
             ])
             .run(tauri::generate_context!())
             .expect("error while running tauri application");

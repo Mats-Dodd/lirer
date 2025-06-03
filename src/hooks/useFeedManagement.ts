@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react'
 import { useFeeds, useCreateFeed, useDeleteFeed } from './useFeeds'
 import { MessageState } from '../types/feed'
+import { feedApi } from '../services/feedApi'
 
 export const useFeedManagement = () => {
   const [message, setMessage] = useState<MessageState | null>(null)
@@ -30,24 +31,28 @@ export const useFeedManagement = () => {
       // Validate URL format
       new URL(url)
       
-      await createFeedMutation.mutateAsync({
-        url: url.trim(),
-        title: undefined,
-        description: undefined
-      })
+      // Parse the feed first
+      console.log("🔍 Parsing feed from URL:", url.trim())
+      const parsedFeed = await feedApi.parseFeedFromUrl(url.trim())
       
-      showMessage("Feed saved successfully!", 'success')
+      console.log("✅ Successfully parsed feed:", parsedFeed)
+      console.log(`📰 Feed title: ${parsedFeed.title}`)
+      console.log(`📄 Number of entries: ${parsedFeed.entries.length}`)
+      
+      // For now, just show that parsing was successful
+      // Later we'll integrate this with the actual feed creation
+      showMessage(`Feed parsed successfully! Found "${parsedFeed.title}" with ${parsedFeed.entries.length} entries.`, 'success')
       return true
       
     } catch (error) {
       if (error instanceof TypeError) {
         showMessage("Please enter a valid URL", 'error')
       } else {
-        showMessage(`Error: ${error}`, 'error')
+        showMessage(`Error parsing feed: ${error}`, 'error')
       }
       return false
     }
-  }, [createFeedMutation, showMessage, clearMessage])
+  }, [showMessage, clearMessage])
 
   const deleteFeed = useCallback(async (id: number): Promise<boolean> => {
     try {
