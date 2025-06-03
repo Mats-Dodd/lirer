@@ -2,7 +2,7 @@ use sea_orm::*;
 use tauri::State;
 use chrono;
 use crate::entities::{prelude::*, *};
-use crate::models::{AppState, CreateFeedRequest, UpdateFeedRequest, FeedResponse, fetch_and_parse_feed, parse_feed_content, ParsedFeed};
+use crate::models::{AppState, CreateFeedRequest, UpdateFeedRequest, FeedResponse, fetch_and_parse_feed, parse_feed_content, ParsedFeed, FetchPriority};
 
 // CREATE - Insert a new feed
 #[tauri::command]
@@ -197,4 +197,107 @@ pub async fn fetch_and_parse_feed_command(url: String) -> Result<ParsedFeed, Str
 pub fn parse_feed_content_command(content: String) -> Result<ParsedFeed, String> {
     parse_feed_content(&content)
         .map_err(|e| e.to_string())
+}
+
+// ASYNC FEED FETCHER COMMANDS
+
+#[tauri::command]
+pub async fn start_async_fetcher(state: State<'_, AppState>) -> Result<String, String> {
+    if let Some(fetcher) = &state.async_fetcher {
+        fetcher.start().await;
+        Ok("Async feed fetcher started successfully".to_string())
+    } else {
+        Err("Async feed fetcher not available".to_string())
+    }
+}
+
+#[tauri::command]
+pub async fn stop_async_fetcher(state: State<'_, AppState>) -> Result<String, String> {
+    if let Some(fetcher) = &state.async_fetcher {
+        fetcher.stop().await;
+        Ok("Async feed fetcher stopped successfully".to_string())
+    } else {
+        Err("Async feed fetcher not available".to_string())
+    }
+}
+
+#[tauri::command]
+pub async fn get_async_fetcher_status(state: State<'_, AppState>) -> Result<bool, String> {
+    if let Some(fetcher) = &state.async_fetcher {
+        Ok(fetcher.is_running().await)
+    } else {
+        Err("Async feed fetcher not available".to_string())
+    }
+}
+
+#[tauri::command]
+pub fn queue_feed_for_async_fetch(
+    state: State<'_, AppState>,
+    url: String,
+    priority: Option<String>,
+) -> Result<String, String> {
+    if let Some(fetcher) = &state.async_fetcher {
+        let fetch_priority = match priority.as_deref() {
+            Some("low") => FetchPriority::Low,
+            Some("normal") => FetchPriority::Normal,
+            Some("high") => FetchPriority::High,
+            Some("critical") => FetchPriority::Critical,
+            _ => FetchPriority::Normal,
+        };
+        
+        fetcher.queue_feed(url.clone(), fetch_priority)
+            .map_err(|e| format!("Failed to queue feed: {}", e))?;
+        
+        Ok(format!("Feed '{}' queued for async fetching", url))
+    } else {
+        Err("Async feed fetcher not available".to_string())
+    }
+}
+
+#[tauri::command]
+pub async fn get_async_fetch_results(state: State<'_, AppState>) -> Result<Vec<String>, String> {
+    if let Some(fetcher) = &state.async_fetcher {
+        let results = fetcher.get_results().await;
+        
+        // Convert results to a simpler format for the frontend
+        let formatted_results: Vec<String> = results.into_iter().map(|result| {
+            match result.result {
+                Ok(feed) => format!("✅ {}: Successfully fetched '{}' with {} entries", 
+                                  result.url, feed.title, feed.entries.len()),
+                Err(error) => format!("❌ {}: Failed - {}", result.url, error),
+            }
+        }).collect();
+        
+        Ok(formatted_results)
+    } else {
+        Err("Async feed fetcher not available".to_string())
+    }
+}
+
+#[tauri::command]
+pub async fn fetch_multiple_feeds_async(
+    state: State<'_, AppState>,
+    urls: Vec<String>,
+    priority: Option<String>,
+) -> Result<String, String> {
+    if let Some(fetcher) = &state.async_fetcher {
+        let fetch_priority = match priority.as_deref() {
+            Some("low") => FetchPriority::Low,
+            Some("normal") => FetchPriority::Normal,
+            Some("high") => FetchPriority::High,
+            Some("critical") => FetchPriority::Critical,
+            _ => FetchPriority::Normal,
+        };
+        
+        let mut queued_count = 0;
+        for url in urls {
+            if fetcher.queue_feed(url, fetch_priority.clone()).is_ok() {
+                queued_count += 1;
+            }
+        }
+        
+        Ok(format!("Successfully queued {} feeds for async fetching", queued_count))
+    } else {
+        Err("Async feed fetcher not available".to_string())
+    }
 } 

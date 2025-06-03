@@ -5,7 +5,7 @@ mod entities;
 mod models;
 mod commands;
 
-use models::AppState;
+use models::{AppState, AsyncFeedFetcher, FetcherConfig};
 use commands::*;
 
 async fn setup_database() -> Result<DatabaseConnection, DbErr> {
@@ -22,7 +22,15 @@ async fn setup_database() -> Result<DatabaseConnection, DbErr> {
 pub fn run() {
     tauri::async_runtime::block_on(async {
         let db = setup_database().await.expect("Failed to setup database");
-        let app_state = AppState { db };
+        
+        // Initialize async feed fetcher with default configuration
+        let fetcher_config = FetcherConfig::default();
+        let async_fetcher = AsyncFeedFetcher::new(fetcher_config);
+        
+        let app_state = AppState { 
+            db,
+            async_fetcher: Some(async_fetcher),
+        };
 
         tauri::Builder::default()
             .manage(app_state)
@@ -38,7 +46,13 @@ pub fn run() {
                 update_feed_last_fetched,
                 delete_feed,
                 fetch_and_parse_feed_command,
-                parse_feed_content_command
+                parse_feed_content_command,
+                start_async_fetcher,
+                stop_async_fetcher,
+                get_async_fetcher_status,
+                queue_feed_for_async_fetch,
+                get_async_fetch_results,
+                fetch_multiple_feeds_async
             ])
             .run(tauri::generate_context!())
             .expect("error while running tauri application");
