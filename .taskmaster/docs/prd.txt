@@ -1,0 +1,347 @@
+# Modern RSS Reader - Product Requirements Document
+
+## Overview
+A modern, minimal RSS reader built with Tauri and React that prioritizes an exceptional reading experience while providing powerful content management and annotation capabilities. The application solves the problem of fragmented content consumption by centralizing RSS feeds in a clean, distraction-free interface with advanced features like intelligent search, personal annotations, and offline reading.
+
+**Target Users**: Knowledge workers, researchers, developers, and avid readers who consume content from multiple RSS sources and want to organize, annotate, and search through their reading material effectively.
+
+**Value Proposition**: Combines the simplicity of traditional RSS readers with modern features like hybrid search, personal annotations, and intelligent content management to create a comprehensive reading and knowledge management system.
+
+## Core Features
+
+### Feed Management
+**Auto Detect Feeds**
+- Automatically discover RSS/Atom feeds from any URL
+- Support for common feed formats (RSS 2.0, Atom, RDF)
+- Intelligent parsing of website metadata to find feeds
+- Batch feed discovery from website lists
+
+**Feed Health Monitoring**
+- Real-time monitoring of feed status and reliability
+- Automatic retry mechanisms for failed feeds
+- Feed performance metrics (update frequency, response time)
+- Visual indicators for feed health status
+- Notifications for persistently broken feeds
+
+**Bulk Operations**
+- Mass mark as read/unread across feeds or categories
+- Bulk delete, archive, or star articles
+- Batch feed management (add, remove, categorize)
+- Import/export operations for feed collections
+
+### Reading Experience
+**Typography Controls**
+- Adjustable font size, family, and line height
+- Custom CSS injection for advanced typography
+- Reading width and margin controls
+- Text contrast and readability optimization
+
+**Reading Modes**
+- Dark and light theme support
+- Focus mode with distraction-free interface
+- Full-screen reading mode
+- Customizable layout options (single/multi-column)
+
+**Reading Progress & Time Estimation**
+- Visual progress indicators for long articles
+- Estimated reading time based on word count and reading speed
+- Reading session tracking and statistics
+- Resume reading from last position
+
+**Offline Reading**
+- Intelligent article caching for offline access
+- Configurable cache size and retention policies
+- Offline indicator and sync status
+- Background downloading of new articles
+
+### Content Organization & Discovery
+**Full-Text Search**
+- Fast, indexed search across all article content
+- Boolean search operators and filters
+- Search within specific feeds or time ranges
+- Search result highlighting and context
+
+**Article Starring & Read Later**
+- One-click starring system for important articles
+- Dedicated read later queue with priority sorting
+- Bulk operations on starred and saved articles
+- Export starred articles for external processing
+
+**Smart Filters**
+- Dynamic filters: unread, recent, long reads, starred
+- Custom filter creation with multiple criteria
+- Saved filter sets for different reading contexts
+- Real-time filter application with instant results
+
+### Sharing & Export
+**Copy Link Functionality**
+- Quick copy original article URLs
+- Share internal reader links with reading position
+- Copy formatted citations with metadata
+- Batch URL export for article collections
+
+**Export Options**
+- Export articles as PDF with custom formatting
+- Markdown export with metadata preservation
+- Plain text export for external processing
+- JSON export for data portability
+
+### Advanced Annotation System
+**Notes Enhanced Search**
+- Search across article content AND personal annotations
+- Semantic search capabilities for finding related concepts
+- Cross-reference articles through shared annotations
+- Full-text search within highlight collections
+
+## User Experience
+
+### User Personas
+**Primary**: The Knowledge Curator
+- Consumes 20-50 articles daily from diverse sources
+- Values organization and the ability to find information later
+- Uses annotations and highlights for research and reference
+- Needs reliable offline access for mobile reading
+
+**Secondary**: The Casual Reader
+- Reads 5-15 articles daily from favorite blogs/news sources
+- Wants a clean, fast reading experience
+- Occasionally saves articles for later
+- Values dark mode and typography customization
+
+### Key User Flows
+1. **Feed Discovery & Setup**
+   - Enter website URL → Auto-detect feeds → Subscribe with one click
+   - Import OPML → Review feeds → Organize into categories
+
+2. **Daily Reading Routine**
+   - Open app → Review unread count → Filter by priority/category
+   - Select article → Adjust typography → Read with progress tracking
+   - Star/save important articles → Add highlights/notes
+
+3. **Research & Reference**
+   - Search across articles and notes → Find related content
+   - Export relevant articles → Share links with colleagues
+   - Review starred articles and highlights
+
+### UI/UX Considerations
+- Sidebar navigation with collapsible feed tree
+- Three-pane layout: Feeds | Articles | Reader
+- Floating annotation toolbar for highlights and comments
+- Contextual menus for bulk operations
+- Keyboard shortcuts for power users
+- Responsive design for different screen sizes
+
+## Technical Architecture
+
+### System Components
+**Frontend (React + TypeScript)**
+- Component-based architecture with React
+- State management with Zustand or Redux Toolkit
+- UI components built with Radix UI or shadcn/ui
+- Rich text editor for annotations (ProseMirror or similar)
+
+**Backend (Tauri + Rust)**
+- Feed parsing and validation
+- Local SQLite database for article storage
+- Background feed fetching service
+- Full-text search indexing (SQLite FTS or Tantivy)
+- File system operations for exports
+
+**Desktop Application (Tauri)**
+- Cross-platform desktop application
+- Native system integration (notifications, file dialogs)
+- Secure local data storage
+- Background processes for feed updates
+
+### Data Models
+**Feed**
+- id, title, url, description, last_updated, health_status
+- category_id, update_frequency, retry_count
+
+**Article**
+- id, feed_id, title, content, url, pub_date, read_status
+- starred, reading_progress, estimated_read_time
+
+**Annotation**
+- id, article_id, type (highlight/comment), content, position
+- created_at, color/category
+
+**User Preferences**
+- typography settings, theme preferences, reading statistics
+- filter configurations, export settings
+
+### APIs and Integrations
+- RSS/Atom feed parsing libraries
+- Full-text search engine integration
+- Export format libraries (PDF, Markdown)
+- System notification APIs
+- File system access for import/export
+
+### Infrastructure Requirements
+- Local SQLite database for all data storage
+- Background task scheduling for feed updates
+- Local file system for article caching
+- Cross-platform compatibility (Windows, macOS, Linux)
+
+## Development Roadmap
+
+### Phase 1: Core RSS Foundation (MVP)
+**Scope**: Basic feed management and article reading
+- Feed subscription and parsing
+- Article display with basic typography controls
+- Read/unread status management
+- Basic light/dark theme support
+- Simple article list and reading pane
+
+**Deliverable**: Functional RSS reader that can subscribe to feeds and display articles in a clean interface
+
+### Phase 2: Enhanced Reading Experience
+**Scope**: Advanced reading features and content organization
+- Typography controls (font, size, spacing)
+- Reading progress tracking and estimated time
+- Article starring and read later functionality
+- Full-text search within articles
+- Smart filters (unread, starred, recent)
+
+**Deliverable**: Feature-rich reading experience with content organization
+
+### Phase 3: Feed Management & Reliability
+**Scope**: Advanced feed operations and health monitoring
+- Auto-detect feeds from URLs
+- Feed health monitoring and status indicators
+- Bulk operations (mark read, delete, categorize)
+- Feed categorization and organization
+- Import/export functionality
+
+**Deliverable**: Robust feed management system with health monitoring
+
+### Phase 4: Offline & Sync Capabilities
+**Scope**: Offline reading and data persistence
+- Intelligent article caching for offline access
+- Background feed updates and sync
+- Configurable cache policies
+- Offline reading indicators
+- Data backup and restore
+
+**Deliverable**: Reliable offline reading with smart caching
+
+### Phase 5: Advanced Search & Annotations
+**Scope**: Intelligent search and annotation system
+- Enhanced search across articles and notes
+- Highlighting and annotation system
+- Cross-article note linking
+- Search result relevance and context
+- Export annotations and highlights
+
+**Deliverable**: Comprehensive annotation and search system
+
+### Phase 6: Sharing & Export
+**Scope**: Content sharing and export capabilities
+- Copy link functionality with various formats
+- PDF export with custom formatting
+- Markdown and plain text export
+- Bulk export operations
+- Citation formatting
+
+**Deliverable**: Complete sharing and export functionality
+
+## Logical Dependency Chain
+
+### Foundation Layer (Phase 1)
+- Database schema and migration system
+- Feed parsing and validation engine
+- Basic UI framework and routing
+- Article display and typography system
+- Theme system foundation
+
+### Content Management Layer (Phase 2)
+- Reading progress tracking system
+- Article status management (read/unread/starred)
+- Search indexing and query system
+- Filter and sorting mechanisms
+- Local data persistence optimization
+
+### Feed Operations Layer (Phase 3)
+- Feed discovery and auto-detection
+- Health monitoring and retry logic
+- Bulk operation framework
+- Category and organization system
+- Import/export data pipeline
+
+### Reliability Layer (Phase 4)
+- Offline storage and caching system
+- Background task scheduling
+- Sync conflict resolution
+- Data integrity and backup systems
+- Performance optimization
+
+### Intelligence Layer (Phase 5)
+- Advanced search algorithms
+- Annotation storage and retrieval
+- Cross-reference and linking system
+- Search relevance ranking
+- Note organization and tagging
+
+### Integration Layer (Phase 6)
+- Export format processors
+- Sharing mechanism implementations
+- External service integrations
+- Batch processing systems
+- User preference management
+
+## Risks and Mitigations
+
+### Technical Challenges
+**Risk**: Feed parsing complexity and format variations
+**Mitigation**: Use established RSS parsing libraries, implement comprehensive testing with various feed formats, graceful error handling
+
+**Risk**: Full-text search performance with large article datasets
+**Mitigation**: Implement incremental indexing, use efficient search algorithms (SQLite FTS or Tantivy), optimize database queries
+
+**Risk**: Offline sync conflicts and data consistency
+**Mitigation**: Implement conflict resolution strategies, use atomic operations, maintain data integrity checks
+
+### MVP Scope Management
+**Risk**: Feature creep leading to delayed MVP delivery
+**Mitigation**: Strictly prioritize Phase 1 features, defer advanced features to later phases, focus on core reading experience first
+
+**Risk**: Over-engineering the annotation system early
+**Mitigation**: Start with simple highlighting, iterate based on user feedback, build complexity gradually
+
+### Resource Constraints
+**Risk**: Complex cross-platform compatibility issues
+**Mitigation**: Leverage Tauri's cross-platform capabilities, test early on target platforms, use platform-specific optimizations when needed
+
+**Risk**: Performance issues with large feed collections
+**Mitigation**: Implement pagination, lazy loading, efficient database indexing, background processing for heavy operations
+
+## Appendix
+
+### Technical Specifications
+- **Frontend**: React 18+, TypeScript 5+, Vite build system
+- **Backend**: Rust with Tauri framework
+- **Database**: SQLite with migrations support
+- **Search**: SQLite FTS5 or Tantivy for advanced search
+- **UI Library**: Radix UI or shadcn/ui components
+- **Styling**: Tailwind CSS for responsive design
+
+### Performance Requirements
+- Feed updates should complete within 30 seconds for 100 feeds
+- Article search results should appear within 500ms
+- Application startup time under 2 seconds
+- Smooth scrolling and typography changes with 60fps
+- Offline article access within 100ms
+
+### Accessibility Requirements
+- Full keyboard navigation support
+- Screen reader compatibility
+- High contrast mode support
+- Configurable font sizes (up to 200% scaling)
+- Focus indicators for all interactive elements
+
+### Security Considerations
+- All data stored locally with no cloud dependencies by default
+- Secure feed URL validation to prevent XSS
+- Content sanitization for article display
+- Safe handling of user-generated annotations
+- Secure export file generation 
