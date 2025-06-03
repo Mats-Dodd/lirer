@@ -1,5 +1,29 @@
 # Modern RSS Reader - Product Requirements Document
 
+## Current Implementation Status ✅
+
+**What's Working Now:**
+- ✅ Feed subscription interface with URL validation
+- ✅ PostgreSQL database with Sea-ORM integration  
+- ✅ Complete feed CRUD operations (create, read, update, delete)
+- ✅ Responsive UI with shadcn/ui components (new-york style)
+- ✅ TanStack Query for optimistic updates and caching
+- ✅ Dark/light theme foundation with CSS variables
+- ✅ Tauri v2 desktop application with modern tooling
+- ✅ Database migrations and environment configuration
+
+**Immediate Next Steps:**
+1. **RSS/Atom Feed Parsing** - Implement feed fetching and content parsing
+2. **Article Storage** - Create article database schema and storage
+3. **Article Display Interface** - Build reading pane with article list
+4. **Basic Reading Features** - Typography controls and read/unread status
+
+**Tech Stack Locked In:**
+- Frontend: React 18.3.1, TypeScript 5.6.2, Vite 6.0.3, TanStack Query
+- Backend: Rust, Tauri v2, Sea-ORM, PostgreSQL
+- UI: shadcn/ui (new-york), Tailwind CSS v4, Lucide React
+- Architecture: Desktop-first with cross-platform support
+
 ## Overview
 A modern, minimal RSS reader built with Tauri and React that prioritizes an exceptional reading experience while providing powerful content management and annotation capabilities. The application solves the problem of fragmented content consumption by centralizing RSS feeds in a clean, distraction-free interface with advanced features like intelligent search, personal annotations, and offline reading.
 
@@ -9,85 +33,93 @@ A modern, minimal RSS reader built with Tauri and React that prioritizes an exce
 
 ## Core Features
 
-### Feed Management
-**Auto Detect Feeds**
+### Feed Management ✅ **PARTIALLY IMPLEMENTED**
+**Basic Feed CRUD Operations** ✅ **IMPLEMENTED**
+- Add RSS feed URLs with automatic validation
+- Store feeds in PostgreSQL database with Sea-ORM
+- Display feeds in responsive list interface
+- Delete feeds with optimistic updates
+- Error handling and success notifications
+- Loading states during operations
+
+**Auto Detect Feeds** ⏱️ **PLANNED**
 - Automatically discover RSS/Atom feeds from any URL
 - Support for common feed formats (RSS 2.0, Atom, RDF)
 - Intelligent parsing of website metadata to find feeds
 - Batch feed discovery from website lists
 
-**Feed Health Monitoring**
+**Feed Health Monitoring** ⏱️ **PLANNED**
 - Real-time monitoring of feed status and reliability
 - Automatic retry mechanisms for failed feeds
 - Feed performance metrics (update frequency, response time)
 - Visual indicators for feed health status
 - Notifications for persistently broken feeds
 
-**Bulk Operations**
+**Bulk Operations** ⏱️ **PLANNED**
 - Mass mark as read/unread across feeds or categories
 - Bulk delete, archive, or star articles
 - Batch feed management (add, remove, categorize)
 - Import/export operations for feed collections
 
-### Reading Experience
-**Typography Controls**
+### Reading Experience ⏱️ **NOT IMPLEMENTED**
+**Typography Controls** ⏱️ **PLANNED**
 - Adjustable font size, family, and line height
 - Custom CSS injection for advanced typography
 - Reading width and margin controls
 - Text contrast and readability optimization
 
-**Reading Modes**
-- Dark and light theme support
+**Reading Modes** ⏱️ **PLANNED** (Theme foundation exists)
+- Dark and light theme support ✅ **CSS Variables implemented**
 - Focus mode with distraction-free interface
 - Full-screen reading mode
 - Customizable layout options (single/multi-column)
 
-**Reading Progress & Time Estimation**
+**Reading Progress & Time Estimation** ⏱️ **PLANNED**
 - Visual progress indicators for long articles
 - Estimated reading time based on word count and reading speed
 - Reading session tracking and statistics
 - Resume reading from last position
 
-**Offline Reading**
+**Offline Reading** ⏱️ **PLANNED**
 - Intelligent article caching for offline access
 - Configurable cache size and retention policies
 - Offline indicator and sync status
 - Background downloading of new articles
 
-### Content Organization & Discovery
-**Full-Text Search**
+### Content Organization & Discovery ⏱️ **NOT IMPLEMENTED**
+**Full-Text Search** ⏱️ **PLANNED**
 - Fast, indexed search across all article content
 - Boolean search operators and filters
 - Search within specific feeds or time ranges
 - Search result highlighting and context
 
-**Article Starring & Read Later**
+**Article Starring & Read Later** ⏱️ **PLANNED**
 - One-click starring system for important articles
 - Dedicated read later queue with priority sorting
 - Bulk operations on starred and saved articles
 - Export starred articles for external processing
 
-**Smart Filters**
+**Smart Filters** ⏱️ **PLANNED**
 - Dynamic filters: unread, recent, long reads, starred
 - Custom filter creation with multiple criteria
 - Saved filter sets for different reading contexts
 - Real-time filter application with instant results
 
-### Sharing & Export
-**Copy Link Functionality**
+### Sharing & Export ⏱️ **NOT IMPLEMENTED**
+**Copy Link Functionality** ⏱️ **PLANNED**
 - Quick copy original article URLs
 - Share internal reader links with reading position
 - Copy formatted citations with metadata
 - Batch URL export for article collections
 
-**Export Options**
+**Export Options** ⏱️ **PLANNED**
 - Export articles as PDF with custom formatting
 - Markdown export with metadata preservation
 - Plain text export for external processing
 - JSON export for data portability
 
-### Advanced Annotation System
-**Notes Enhanced Search**
+### Advanced Annotation System ⏱️ **NOT IMPLEMENTED**
+**Notes Enhanced Search** ⏱️ **PLANNED**
 - Search across article content AND personal annotations
 - Semantic search capabilities for finding related concepts
 - Cross-reference articles through shared annotations
@@ -134,64 +166,88 @@ A modern, minimal RSS reader built with Tauri and React that prioritizes an exce
 ## Technical Architecture
 
 ### System Components
-**Frontend (React + TypeScript)**
-- Component-based architecture with React
-- State management with Zustand or Redux Toolkit
-- UI components built with Radix UI or shadcn/ui
-- Rich text editor for annotations (ProseMirror or similar)
+**Frontend (React + TypeScript)** ✅ **IMPLEMENTED**
+- Component-based architecture with React 18 ✅
+- State management with TanStack Query for server state ✅
+- UI components built with shadcn/ui (new-york style) ✅
+- Tailwind CSS v4 with CSS variables for theming ✅
+- Lucide React icons ✅
+- Rich text editor for annotations (ProseMirror or similar) ⏱️ **PLANNED**
 
-**Backend (Tauri + Rust)**
-- Feed parsing and validation
-- Local SQLite database for article storage
-- Background feed fetching service
-- Full-text search indexing (SQLite FTS or Tantivy)
-- File system operations for exports
+**Backend (Tauri + Rust)** ✅ **PARTIALLY IMPLEMENTED**
+- PostgreSQL database with Sea-ORM ✅
+- Complete feed CRUD operations ✅
+- Environment-based configuration with dotenv ✅
+- Feed parsing and validation ⏱️ **PLANNED**
+- Background feed fetching service ⏱️ **PLANNED**
+- Full-text search indexing ⏱️ **PLANNED**
+- File system operations for exports ⏱️ **PLANNED**
 
-**Desktop Application (Tauri)**
-- Cross-platform desktop application
-- Native system integration (notifications, file dialogs)
-- Secure local data storage
-- Background processes for feed updates
+**Desktop Application (Tauri)** ✅ **IMPLEMENTED**
+- Cross-platform desktop application (Tauri v2) ✅
+- Native system integration (opener plugin) ✅
+- Secure local data storage ✅
+- Background processes for feed updates ⏱️ **PLANNED**
 
 ### Data Models
-**Feed**
-- id, title, url, description, last_updated, health_status
-- category_id, update_frequency, retry_count
+**Feed** ✅ **IMPLEMENTED**
+- id, url, title, description, created_at, updated_at, last_fetched_at ✅
+- category_id, update_frequency, retry_count, health_status ⏱️ **PLANNED**
 
-**Article**
+**Article** ⏱️ **NOT IMPLEMENTED**
 - id, feed_id, title, content, url, pub_date, read_status
 - starred, reading_progress, estimated_read_time
 
-**Annotation**
+**Annotation** ⏱️ **NOT IMPLEMENTED**
 - id, article_id, type (highlight/comment), content, position
 - created_at, color/category
 
-**User Preferences**
+**User Preferences** ⏱️ **NOT IMPLEMENTED**
 - typography settings, theme preferences, reading statistics
 - filter configurations, export settings
 
 ### APIs and Integrations
-- RSS/Atom feed parsing libraries
-- Full-text search engine integration
-- Export format libraries (PDF, Markdown)
-- System notification APIs
-- File system access for import/export
+- RSS/Atom feed parsing libraries ⏱️ **PLANNED**
+- Full-text search engine integration ⏱️ **PLANNED** 
+- Export format libraries (PDF, Markdown) ⏱️ **PLANNED**
+- System notification APIs ⏱️ **PLANNED**
+- File system access for import/export ⏱️ **PLANNED**
+- Tauri opener plugin ✅ **IMPLEMENTED**
 
-### Infrastructure Requirements
-- Local SQLite database for all data storage
-- Background task scheduling for feed updates
-- Local file system for article caching
-- Cross-platform compatibility (Windows, macOS, Linux)
+### Infrastructure Requirements ✅ **IMPLEMENTED**
+- PostgreSQL database for all data storage ✅ **LIVE**
+- Sea-ORM for type-safe database operations ✅ **CONFIGURED**
+- Environment-based configuration with dotenv ✅ **WORKING**
+- Cross-platform compatibility (Windows, macOS, Linux) ✅ **TAURI V2**
+- Background task scheduling for feed updates ⏱️ **PLANNED**
+- Local file system for article caching ⏱️ **PLANNED**
+
+### Current Database Schema ✅ **IMPLEMENTED**
+**Feeds Table:**
+```sql
+CREATE TABLE feed (
+    id SERIAL PRIMARY KEY,
+    url VARCHAR UNIQUE NOT NULL,
+    title VARCHAR,
+    description TEXT,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    last_fetched_at TIMESTAMP
+);
+```
 
 ## Development Roadmap
 
-### Phase 1: Core RSS Foundation (MVP)
+### Phase 1: Core RSS Foundation (MVP) ✅ **IN PROGRESS** 
 **Scope**: Basic feed management and article reading
-- Feed subscription and parsing
-- Article display with basic typography controls
-- Read/unread status management
-- Basic light/dark theme support
-- Simple article list and reading pane
+- Feed subscription and database storage ✅ **COMPLETED**
+- Feed parsing and article fetching ⏱️ **IN PROGRESS**
+- Article display with basic typography controls ⏱️ **NEXT**
+- Read/unread status management ⏱️ **PLANNED**
+- Basic light/dark theme support ✅ **CSS foundation completed**
+- Simple article list and reading pane ⏱️ **NEXT**
+
+**Current Status**: Feed CRUD operations, database schema, and UI foundation are complete. Need to implement RSS parsing and article storage/display.
 
 **Deliverable**: Functional RSS reader that can subscribe to feeds and display articles in a clean interface
 
@@ -247,12 +303,12 @@ A modern, minimal RSS reader built with Tauri and React that prioritizes an exce
 
 ## Logical Dependency Chain
 
-### Foundation Layer (Phase 1)
-- Database schema and migration system
-- Feed parsing and validation engine
-- Basic UI framework and routing
-- Article display and typography system
-- Theme system foundation
+### Foundation Layer (Phase 1) ✅ **PARTIALLY COMPLETE**
+- Database schema and migration system ✅ **COMPLETED**
+- Basic UI framework and routing ✅ **COMPLETED**
+- Theme system foundation ✅ **COMPLETED**
+- Feed parsing and validation engine ⏱️ **IN PROGRESS**
+- Article display and typography system ⏱️ **NEXT PRIORITY**
 
 ### Content Management Layer (Phase 2)
 - Reading progress tracking system
@@ -317,13 +373,16 @@ A modern, minimal RSS reader built with Tauri and React that prioritizes an exce
 
 ## Appendix
 
-### Technical Specifications
-- **Frontend**: React 18+, TypeScript 5+, Vite build system
-- **Backend**: Rust with Tauri framework
-- **Database**: SQLite with migrations support
-- **Search**: SQLite FTS5 or Tantivy for advanced search
-- **UI Library**: Radix UI or shadcn/ui components
-- **Styling**: Tailwind CSS for responsive design
+### Technical Specifications ✅ **CURRENT IMPLEMENTATION**
+- **Frontend**: React 18.3.1, TypeScript 5.6.2, Vite 6.0.3 ✅
+- **Backend**: Rust with Tauri v2 framework ✅
+- **Database**: PostgreSQL with Sea-ORM 0.12.0 and migrations ✅
+- **State Management**: TanStack Query v5.79.0 for server state ✅
+- **Search**: PostgreSQL full-text search or Tantivy (planned) ⏱️
+- **UI Library**: shadcn/ui components (new-york style) with Radix UI primitives ✅
+- **Styling**: Tailwind CSS v4.1.8 with CSS variables theming ✅
+- **Icons**: Lucide React v0.511.0 ✅
+- **Build**: Vite with Tauri CLI v2 ✅
 
 ### Performance Requirements
 - Feed updates should complete within 30 seconds for 100 feeds
