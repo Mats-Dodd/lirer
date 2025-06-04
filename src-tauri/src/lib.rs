@@ -1,5 +1,6 @@
 use sea_orm::*;
 use std::env;
+use std::sync::Arc;
 
 mod entities;
 mod models;
@@ -23,9 +24,10 @@ pub fn run() {
     tauri::async_runtime::block_on(async {
         let db = setup_database().await.expect("Failed to setup database");
         
-        // Initialize async feed fetcher with default configuration
+        // Initialize async feed fetcher with database connection for automatic integration
         let fetcher_config = FetcherConfig::default();
-        let async_fetcher = AsyncFeedFetcher::new(fetcher_config);
+        let db_arc = Arc::new(db.clone());
+        let async_fetcher = AsyncFeedFetcher::new_with_db(fetcher_config, Some(db_arc));
         
         let app_state = AppState { 
             db,
@@ -58,7 +60,6 @@ pub fn run() {
                 refresh_single_feed,
                 get_refresh_progress,
                 get_last_refresh_summary,
-                process_refresh_results,
                 // Feed Entry commands
                 create_feed_entry,
                 create_feed_with_entries,

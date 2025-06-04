@@ -7,6 +7,8 @@ use tauri_plugin_http::reqwest;
 use crate::models::feed_parser::{ParsedFeed, parse_feed_content};
 use crate::models::responses::{RefreshProgress, RefreshError, RefreshSummary, FeedRefreshStatus};
 use chrono::{DateTime, Utc};
+use sea_orm::*;
+use crate::entities::{prelude::*, *};
 
 // Configuration for the async fetcher
 #[derive(Debug, Clone)]
@@ -43,6 +45,7 @@ pub struct RefreshProgressState {
     pub start_time: Option<Instant>,
     pub errors: Vec<RefreshError>,
     pub feed_statuses: Vec<FeedRefreshStatus>,
+    pub last_summary: Option<RefreshSummary>,
 }
 
 impl Default for RefreshProgressState {
@@ -56,6 +59,7 @@ impl Default for RefreshProgressState {
             start_time: None,
             errors: Vec::new(),
             feed_statuses: Vec::new(),
+            last_summary: None,
         }
     }
 }
@@ -191,10 +195,16 @@ pub struct AsyncFeedFetcher {
     // Progress tracking for refresh operations
     refresh_progress: Arc<RwLock<RefreshProgressState>>,
     last_refresh_summary: Arc<RwLock<Option<RefreshSummary>>>,
+    // Database connection for automatic integration
+    db: Option<Arc<DatabaseConnection>>,
 }
 
 impl AsyncFeedFetcher {
     pub fn new(config: FetcherConfig) -> Self {
+        Self::new_with_db(config, None)
+    }
+
+    pub fn new_with_db(config: FetcherConfig, db: Option<Arc<DatabaseConnection>>) -> Self {
         let (task_sender, task_receiver) = mpsc::unbounded_channel();
         let (result_sender, result_receiver) = mpsc::unbounded_channel();
         
@@ -212,6 +222,7 @@ impl AsyncFeedFetcher {
             is_running: is_running.clone(),
             refresh_progress: refresh_progress.clone(),
             last_refresh_summary,
+            db: db.clone(),
         };
 
         // Start the background workers
@@ -222,6 +233,7 @@ impl AsyncFeedFetcher {
             rate_limiter,
             is_running,
             refresh_progress,
+            db,
         ));
 
         fetcher
@@ -287,6 +299,7 @@ impl AsyncFeedFetcher {
             start_time: Some(Instant::now()),
             errors: Vec::new(),
             feed_statuses: Vec::new(),
+            last_summary: None,
         };
     }
 
@@ -366,6 +379,18 @@ impl AsyncFeedFetcher {
     }
 
     pub async fn get_last_refresh_summary(&self) -> Option<RefreshSummary> {
+        // First check if there's a completed summary in progress state
+        {
+            let progress = self.refresh_progress.read().await;
+            if let Some(summary) = &progress.last_summary {
+                // Move the summary to the persistent storage
+                let mut last_summary = self.last_refresh_summary.write().await;
+                *last_summary = Some(summary.clone());
+                return Some(summary.clone());
+            }
+        }
+        
+        // Otherwise return the persistent summary
         let summary = self.last_refresh_summary.read().await;
         summary.clone()
     }
@@ -408,6 +433,7 @@ impl AsyncFeedFetcher {
         rate_limiter: RateLimiter,
         is_running: Arc<RwLock<bool>>,
         refresh_progress: Arc<RwLock<RefreshProgressState>>,
+        db: Option<Arc<DatabaseConnection>>,
     ) {
         let semaphore = Arc::new(tokio::sync::Semaphore::new(config.max_concurrent_requests));
         let mut task_queue = BinaryHeap::new();
@@ -432,27 +458,256 @@ impl AsyncFeedFetcher {
                 let result_sender = result_sender.clone();
                 let config = config.clone();
                 let rate_limiter = rate_limiter.clone();
+                let refresh_progress = refresh_progress.clone();
+                let db = db.clone();
                 
                 tokio::spawn(async move {
                     let _permit = permit; // Hold permit for the duration of the task
                     let start_time = Instant::now();
                     
+                    // Update progress to show current feed being processed
+                    Self::update_current_feed_progress(&refresh_progress, Some(priority_task.url.clone())).await;
+                    
                     let result = Self::fetch_with_retry(priority_task.clone(), &config, &rate_limiter).await;
                     let fetch_duration = start_time.elapsed();
                     
                     let fetch_result = FeedFetchResult {
-                        url: priority_task.url,
-                        result,
+                        url: priority_task.url.clone(),
+                        result: result.clone(),
                         fetch_duration,
                         retry_count: priority_task.retry_count,
                     };
                     
-                    if result_sender.send(fetch_result).is_err() {
-                        eprintln!("Failed to send fetch result");
+                    // Handle database integration and progress tracking
+                    if let Some(db_conn) = &db {
+                        Self::handle_fetch_result_with_db(
+                            &fetch_result,
+                            &refresh_progress,
+                            db_conn.clone(),
+                        ).await;
+                    } else {
+                        // Fallback: just send result without database integration
+                        if result_sender.send(fetch_result).is_err() {
+                            eprintln!("Failed to send fetch result");
+                        }
                     }
                 });
             }
         }
+    }
+
+    // Helper method to update current feed progress
+    async fn update_current_feed_progress(
+        refresh_progress: &Arc<RwLock<RefreshProgressState>>,
+        current_feed_url: Option<String>,
+    ) {
+        let mut progress = refresh_progress.write().await;
+        progress.current_feed_url = current_feed_url;
+    }
+
+    // Handle fetch result with automatic database integration
+    async fn handle_fetch_result_with_db(
+        fetch_result: &FeedFetchResult,
+        refresh_progress: &Arc<RwLock<RefreshProgressState>>,
+        db: Arc<DatabaseConnection>,
+    ) {
+        // Find the feed in database by URL
+        let feed_opt = Feed::find()
+            .filter(feed::Column::Url.eq(&fetch_result.url))
+            .one(db.as_ref())
+            .await;
+        
+        let feed = match feed_opt {
+            Ok(Some(feed)) => feed,
+            Ok(None) => {
+                eprintln!("Feed not found in database: {}", fetch_result.url);
+                return;
+            }
+            Err(e) => {
+                eprintln!("Database error finding feed {}: {}", fetch_result.url, e);
+                return;
+            }
+        };
+
+        match &fetch_result.result {
+            Ok(parsed_feed) => {
+                // Successfully parsed feed - save entries to database
+                match Self::save_parsed_feed_to_database(db.as_ref(), &feed, parsed_feed).await {
+                    Ok(entries_added) => {
+                        // Update feed's last_fetched_at
+                        let mut updated_feed: feed::ActiveModel = feed.clone().into();
+                        updated_feed.last_fetched_at = ActiveValue::Set(Some(chrono::Utc::now().naive_utc()));
+                        let _ = updated_feed.update(db.as_ref()).await;
+                        
+                        // Create successful feed status
+                        let feed_status = FeedRefreshStatus {
+                            feed_id: feed.id,
+                            feed_url: feed.url.clone(),
+                            feed_title: feed.title.clone(),
+                            status: "success".to_string(),
+                            entries_added,
+                            last_fetched_at: chrono::Utc::now().to_rfc3339(),
+                            error: None,
+                        };
+                        
+                        // Update progress
+                        Self::complete_feed_refresh_internal(refresh_progress, feed_status, None).await;
+                    }
+                    Err(save_error) => {
+                        // Database save failed
+                        let refresh_error = RefreshError {
+                            feed_url: fetch_result.url.clone(),
+                            feed_title: feed.title.clone(),
+                            error_message: format!("Database save failed: {}", save_error),
+                            error_type: "database".to_string(),
+                            retry_count: fetch_result.retry_count,
+                            timestamp: chrono::Utc::now().to_rfc3339(),
+                        };
+                        
+                        let feed_status = FeedRefreshStatus {
+                            feed_id: feed.id,
+                            feed_url: feed.url.clone(),
+                            feed_title: feed.title.clone(),
+                            status: "failed".to_string(),
+                            entries_added: 0,
+                            last_fetched_at: chrono::Utc::now().to_rfc3339(),
+                            error: Some(refresh_error.clone()),
+                        };
+                        
+                        Self::complete_feed_refresh_internal(refresh_progress, feed_status, Some(refresh_error)).await;
+                    }
+                }
+            }
+            Err(fetch_error) => {
+                // Feed fetch failed
+                let refresh_error = RefreshError {
+                    feed_url: fetch_result.url.clone(),
+                    feed_title: feed.title.clone(),
+                    error_message: fetch_error.to_string(),
+                    error_type: match fetch_error {
+                        FeedFetchError::NetworkError(_) => "network",
+                        FeedFetchError::ParseError(_) => "parse",
+                        FeedFetchError::Timeout => "timeout",
+                        FeedFetchError::RateLimited => "rate_limited",
+                        FeedFetchError::TooManyRetries => "too_many_retries",
+                    }.to_string(),
+                    retry_count: fetch_result.retry_count,
+                    timestamp: chrono::Utc::now().to_rfc3339(),
+                };
+                
+                let feed_status = FeedRefreshStatus {
+                    feed_id: feed.id,
+                    feed_url: feed.url.clone(),
+                    feed_title: feed.title.clone(),
+                    status: "failed".to_string(),
+                    entries_added: 0,
+                    last_fetched_at: chrono::Utc::now().to_rfc3339(),
+                    error: Some(refresh_error.clone()),
+                };
+                
+                Self::complete_feed_refresh_internal(refresh_progress, feed_status, Some(refresh_error)).await;
+            }
+        }
+    }
+
+    // Internal method to complete feed refresh and update progress
+    async fn complete_feed_refresh_internal(
+        refresh_progress: &Arc<RwLock<RefreshProgressState>>,
+        feed_status: FeedRefreshStatus,
+        error: Option<RefreshError>,
+    ) {
+        let mut progress = refresh_progress.write().await;
+        progress.completed_feeds += 1;
+        
+        if let Some(err) = error {
+            progress.failed_feeds += 1;
+            progress.errors.push(err);
+        }
+        
+        progress.feed_statuses.push(feed_status);
+        
+        // Check if refresh is complete
+        if progress.completed_feeds >= progress.total_feeds {
+            progress.is_active = false;
+            progress.current_feed_url = None;
+            
+            // Create refresh summary
+            if let Some(start_time) = progress.start_time {
+                let duration = start_time.elapsed();
+                let summary = RefreshSummary {
+                    timestamp: Utc::now().to_rfc3339(),
+                    total_processed: progress.total_feeds,
+                    successful_count: progress.completed_feeds - progress.failed_feeds,
+                    failed_count: progress.failed_feeds,
+                    duration_seconds: duration.as_secs(),
+                    feeds_updated: progress.feed_statuses.clone(),
+                    errors: progress.errors.clone(),
+                };
+                
+                // Store the summary - need to access last_refresh_summary from AsyncFeedFetcher
+                // Since we're in a static method, we'll store it in the progress for now
+                // and the get_last_refresh_summary method will extract it
+                progress.last_summary = Some(summary);
+            }
+        }
+    }
+
+    // Helper function to save parsed feed entries to database with duplicate detection
+    async fn save_parsed_feed_to_database(
+        db: &DatabaseConnection,
+        feed: &feed::Model,
+        parsed_feed: &ParsedFeed,
+    ) -> Result<usize, String> {
+        use crate::entities::feed_entry;
+        let mut entries_added = 0;
+        
+        for entry in &parsed_feed.entries {
+            // Skip entries without a link (required field)
+            let entry_link = match &entry.link {
+                Some(link) if !link.is_empty() => link,
+                _ => continue, // Skip entries without valid links
+            };
+            
+            // Check if entry already exists (duplicate detection by link)
+            let existing_entry = feed_entry::Entity::find()
+                .filter(feed_entry::Column::FeedId.eq(feed.id))
+                .filter(feed_entry::Column::Link.eq(entry_link))
+                .one(db)
+                .await
+                .map_err(|e| format!("Failed to check for existing entry: {}", e))?;
+            
+            if existing_entry.is_none() {
+                // Entry doesn't exist, create new one
+                let new_entry = feed_entry::ActiveModel {
+                    feed_id: ActiveValue::Set(feed.id),
+                    title: ActiveValue::Set(
+                        entry.title.clone().unwrap_or_else(|| "Untitled".to_string())
+                    ),
+                    description: ActiveValue::Set(entry.description.clone()),
+                    link: ActiveValue::Set(entry_link.clone()),
+                    content: ActiveValue::Set(entry.content.clone()),
+                    published_at: ActiveValue::Set(
+                        entry.published.as_ref()
+                            .and_then(|p| chrono::DateTime::parse_from_rfc3339(p).ok())
+                            .map(|dt| dt.naive_utc())
+                    ),
+                    created_at: ActiveValue::Set(chrono::Utc::now().naive_utc()),
+                    updated_at: ActiveValue::Set(chrono::Utc::now().naive_utc()),
+                    is_read: ActiveValue::Set(false),
+                    is_starred: ActiveValue::Set(false),
+                    ..Default::default()
+                };
+                
+                feed_entry::Entity::insert(new_entry)
+                    .exec(db)
+                    .await
+                    .map_err(|e| format!("Failed to insert feed entry: {}", e))?;
+                
+                entries_added += 1;
+            }
+        }
+        
+        Ok(entries_added)
     }
 
     async fn fetch_with_retry(
