@@ -135,4 +135,79 @@ export interface FeedRefreshStatus {
   entries_added: number
   last_fetched_at: string
   error?: RefreshError
+}
+
+// Periodic Refresh Settings Types
+export interface PeriodicRefreshSettings {
+  enabled: boolean
+  interval: RefreshInterval
+  quietHours: QuietHours
+  bandwidthAware: boolean
+  pauseOnUserActivity: boolean
+  enableDesktopNotifications: boolean
+  lastAutoRefresh?: string
+}
+
+export interface RefreshInterval {
+  value: number // in minutes
+  label: string
+}
+
+export interface QuietHours {
+  enabled: boolean
+  startHour: number // 0-23
+  endHour: number // 0-23
+}
+
+export interface AppSettings {
+  periodicRefresh: PeriodicRefreshSettings
+  general: GeneralSettings
+}
+
+export interface GeneralSettings {
+  theme: 'light' | 'dark' | 'system'
+  compactView: boolean
+  markAsReadOnScroll: boolean
+}
+
+// Background Refresh Status Types
+export interface BackgroundRefreshStatus {
+  isScheduled: boolean
+  nextRefreshTime: string | null
+  lastRefreshTime: string | null
+  isUserActive: boolean
+  isQuietHours: boolean
+  connectionSpeed?: 'slow' | 'moderate' | 'fast'
+}
+
+// Default settings
+export const DEFAULT_REFRESH_INTERVALS: RefreshInterval[] = [
+  { value: 15, label: '15 minutes' },
+  { value: 30, label: '30 minutes' },
+  { value: 60, label: '1 hour' },
+  { value: 120, label: '2 hours' },
+  { value: 240, label: '4 hours' },
+  { value: 480, label: '8 hours' },
+]
+
+export const DEFAULT_PERIODIC_REFRESH_SETTINGS: PeriodicRefreshSettings = {
+  enabled: false,
+  interval: DEFAULT_REFRESH_INTERVALS[2], // 1 hour default
+  quietHours: {
+    enabled: false,
+    startHour: 23, // 11 PM
+    endHour: 7, // 7 AM
+  },
+  bandwidthAware: true,
+  pauseOnUserActivity: true,
+  enableDesktopNotifications: false,
+}
+
+export const DEFAULT_APP_SETTINGS: AppSettings = {
+  periodicRefresh: DEFAULT_PERIODIC_REFRESH_SETTINGS,
+  general: {
+    theme: 'system',
+    compactView: false,
+    markAsReadOnScroll: false,
+  },
 } 
