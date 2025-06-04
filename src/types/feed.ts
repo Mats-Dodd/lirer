@@ -87,4 +87,36 @@ export interface UpdateFeedEntryRequest {
   content?: string
   is_read?: boolean
   is_starred?: boolean
+}
+
+// Refresh System Types
+export interface RefreshResponse {
+  total_feeds: number
+  message: string
+  estimated_completion_time?: number
+}
+
+export interface RefreshProgress {
+  total_feeds: number
+  completed_feeds: number
+  failed_feeds: number
+  current_feed_url?: string
+  is_refreshing: boolean
+  errors: RefreshError[]
+}
+
+export interface RefreshError {
+  feed_id: number
+  feed_url: string
+  error_message: string
+  error_type: 'network' | 'parse' | 'timeout' | 'unknown'
+}
+
+export interface RefreshSummary {
+  timestamp: string
+  total_processed: number
+  successful_count: number
+  failed_count: number
+  duration_ms: number
+  error_details: RefreshError[]
 } 

@@ -7,7 +7,10 @@ import {
   FeedWithEntriesResponse,
   FeedEntryResponse,
   CreateFeedEntryRequest,
-  UpdateFeedEntryRequest
+  UpdateFeedEntryRequest,
+  RefreshResponse,
+  RefreshProgress,
+  RefreshSummary
 } from "../types/feed"
 
 export const feedApi = {
@@ -64,5 +67,22 @@ export const feedApi = {
 
   async markEntryAsStarred(id: number, isStarred: boolean): Promise<FeedEntryResponse> {
     return await invoke<FeedEntryResponse>("mark_entry_as_starred", { id, isStarred })
+  },
+
+  // Refresh operations
+  async refreshAllFeeds(): Promise<RefreshResponse> {
+    return await invoke<RefreshResponse>("refresh_all_feeds")
+  },
+
+  async refreshSingleFeed(feedId: number): Promise<RefreshResponse> {
+    return await invoke<RefreshResponse>("refresh_single_feed", { feedId })
+  },
+
+  async getRefreshProgress(): Promise<RefreshProgress> {
+    return await invoke<RefreshProgress>("get_refresh_progress")
+  },
+
+  async getLastRefreshSummary(): Promise<RefreshSummary> {
+    return await invoke<RefreshSummary>("get_last_refresh_summary")
   }
 } 
