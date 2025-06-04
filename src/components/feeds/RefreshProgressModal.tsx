@@ -1,72 +1,53 @@
-import React from 'react'
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from "@/components/ui/dialog"
+import React, { useEffect } from 'react'
 import { Button } from "@/components/ui/button"
-import { RefreshProgress, RefreshError } from "../../types/feed"
-import { CheckCircle, AlertCircle, Clock, RefreshCw, X } from 'lucide-react'
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogHeader, 
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { CheckCircle, RefreshCw } from 'lucide-react'
+import { RefreshProgress } from "../../types/feed"
 
 interface RefreshProgressModalProps {
+  progress: RefreshProgress | null
   isOpen: boolean
   onClose: () => void
-  progress: RefreshProgress | null
   autoCloseOnComplete?: boolean
 }
 
 export const RefreshProgressModal: React.FC<RefreshProgressModalProps> = ({
+  progress,
   isOpen,
   onClose,
-  progress,
-  autoCloseOnComplete = true
+  autoCloseOnComplete = false
 }) => {
-  // Auto-close when refresh is complete (if enabled)
-  React.useEffect(() => {
-    if (autoCloseOnComplete && progress && !progress.is_refreshing) {
+  // Auto-close when refresh completes (optional)
+  useEffect(() => {
+    if (autoCloseOnComplete && progress && !progress.is_active) {
       const timer = setTimeout(() => {
         onClose()
       }, 3000) // Auto-close after 3 seconds
-      
       return () => clearTimeout(timer)
     }
-  }, [progress?.is_refreshing, autoCloseOnComplete, onClose])
+  }, [progress?.is_active, autoCloseOnComplete, onClose])
 
   if (!progress) {
     return null
   }
 
-  const completed = progress.completed_feeds
-  const failed = progress.failed_feeds
-  const total = progress.total_feeds
-  const inProgress = total - completed - failed
-  const percentage = total > 0 ? Math.round(((completed + failed) / total) * 100) : 0
-
-  const getStatusIcon = (error?: RefreshError) => {
-    if (error) {
-      return <AlertCircle className="h-4 w-4 text-red-500" />
-    }
-    return <CheckCircle className="h-4 w-4 text-green-500" />
-  }
-
-  const formatErrorType = (errorType: RefreshError['error_type']) => {
-    switch (errorType) {
-      case 'network': return 'Network Error'
-      case 'parse': return 'Parse Error'
-      case 'timeout': return 'Timeout'
-      default: return 'Unknown Error'
-    }
+  const formatTimeRemaining = (seconds?: number) => {
+    if (!seconds) return 'Calculating...'
+    if (seconds < 60) return `${Math.round(seconds)}s remaining`
+    return `${Math.round(seconds / 60)}m remaining`
   }
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            {progress.is_refreshing ? (
+            {progress.is_active ? (
               <>
                 <RefreshCw className="h-5 w-5 animate-spin" />
                 Refreshing Feeds
@@ -78,101 +59,89 @@ export const RefreshProgressModal: React.FC<RefreshProgressModalProps> = ({
               </>
             )}
           </DialogTitle>
-          <DialogDescription>
-            {progress.is_refreshing
-              ? `Processing feeds... ${completed + failed} of ${total} completed`
-              : `Refresh completed. ${completed} successful, ${failed} failed.`
-            }
-          </DialogDescription>
         </DialogHeader>
 
-        {/* Progress Summary */}
         <div className="space-y-4">
           {/* Progress Bar */}
           <div className="space-y-2">
             <div className="flex justify-between text-sm">
               <span>Progress</span>
-              <span>{percentage}%</span>
+              <span>{Math.round(progress.progress_percentage)}%</span>
             </div>
-            <div className="w-full bg-secondary rounded-full h-2">
+            <div className="w-full bg-gray-200 rounded-full h-2">
               <div
-                className="bg-primary h-2 rounded-full transition-all duration-300"
-                style={{ width: `${percentage}%` }}
+                className="bg-blue-500 h-2 rounded-full transition-all duration-300"
+                style={{ width: `${progress.progress_percentage}%` }}
               />
             </div>
           </div>
 
-          {/* Statistics */}
+          {/* Statistics Grid */}
           <div className="grid grid-cols-3 gap-4 text-center">
             <div className="space-y-1">
-              <div className="flex items-center justify-center gap-1">
-                <CheckCircle className="h-4 w-4 text-green-500" />
-                <span className="text-sm font-medium">Successful</span>
+              <div className="text-2xl font-bold text-green-600">
+                {progress.completed_feeds - progress.failed_feeds}
               </div>
-              <div className="text-2xl font-bold text-green-600">{completed}</div>
+              <div className="text-xs text-muted-foreground">Successful</div>
             </div>
             <div className="space-y-1">
-              <div className="flex items-center justify-center gap-1">
-                <AlertCircle className="h-4 w-4 text-red-500" />
-                <span className="text-sm font-medium">Failed</span>
-              </div>
-              <div className="text-2xl font-bold text-red-600">{failed}</div>
+              <div className="text-2xl font-bold text-red-600">{progress.failed_feeds}</div>
+              <div className="text-xs text-muted-foreground">Failed</div>
             </div>
             <div className="space-y-1">
-              <div className="flex items-center justify-center gap-1">
-                <Clock className="h-4 w-4 text-yellow-500" />
-                <span className="text-sm font-medium">Remaining</span>
+              <div className="text-2xl font-bold text-blue-600">
+                {progress.total_feeds - progress.completed_feeds}
               </div>
-              <div className="text-2xl font-bold text-yellow-600">{inProgress}</div>
+              <div className="text-xs text-muted-foreground">Remaining</div>
             </div>
           </div>
 
           {/* Current Feed */}
-          {progress.is_refreshing && progress.current_feed_url && (
-            <div className="p-3 bg-secondary rounded-md">
-              <div className="text-sm font-medium">Currently Processing:</div>
-              <div className="text-sm text-muted-foreground truncate">
+          {progress.is_active && progress.current_feed_url && (
+            <div className="p-3 bg-muted rounded-lg">
+              <div className="text-sm font-medium">Currently processing:</div>
+              <div className="text-xs text-muted-foreground truncate">
                 {progress.current_feed_url}
               </div>
             </div>
           )}
 
+          {/* Time Remaining */}
+          {progress.estimated_time_remaining && (
+            <div className="text-center text-sm text-muted-foreground">
+              {formatTimeRemaining(progress.estimated_time_remaining)}
+            </div>
+          )}
+
           {/* Error Details */}
           {progress.errors.length > 0 && (
-            <div className="space-y-3">
-              <h4 className="font-medium text-sm">Feed Errors:</h4>
-              <div className="max-h-40 overflow-y-auto space-y-2">
-                {progress.errors.map((error, index) => (
-                  <div
-                    key={index}
-                    className="p-3 border rounded-md bg-red-50 dark:bg-red-950/50"
-                  >
-                    <div className="flex items-start gap-2">
-                      <AlertCircle className="h-4 w-4 text-red-500 mt-0.5 flex-shrink-0" />
-                      <div className="min-w-0 flex-1">
-                        <div className="text-sm font-medium">
-                          {formatErrorType(error.error_type)}
-                        </div>
-                        <div className="text-sm text-muted-foreground truncate">
-                          {error.feed_url}
-                        </div>
-                        <div className="text-xs text-red-600 mt-1">
-                          {error.error_message}
-                        </div>
-                      </div>
-                    </div>
+            <div className="space-y-2">
+              <div className="text-sm font-medium text-red-600">
+                Errors ({progress.errors.length})
+              </div>
+              <div className="max-h-32 overflow-y-auto space-y-1">
+                {progress.errors.slice(0, 5).map((error, index) => (
+                  <div key={index} className="p-2 bg-red-50 rounded text-xs">
+                    <div className="font-medium">{error.feed_title || error.feed_url}</div>
+                    <div className="text-red-600">{error.error_message}</div>
                   </div>
                 ))}
+                {progress.errors.length > 5 && (
+                  <div className="text-xs text-muted-foreground text-center">
+                    ... and {progress.errors.length - 5} more errors
+                  </div>
+                )}
               </div>
             </div>
           )}
-        </div>
 
-        <DialogFooter>
-          <Button onClick={onClose} variant="outline">
-            {progress.is_refreshing ? 'Close' : 'Done'}
-          </Button>
-        </DialogFooter>
+          {/* Close Button */}
+          <div className="flex justify-end">
+            <Button onClick={onClose} variant="outline">
+              {progress.is_active ? 'Close' : 'Done'}
+            </Button>
+          </div>
+        </div>
       </DialogContent>
     </Dialog>
   )

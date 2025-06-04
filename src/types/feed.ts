@@ -91,25 +91,30 @@ export interface UpdateFeedEntryRequest {
 
 // Refresh System Types
 export interface RefreshResponse {
-  total_feeds: number
+  success: boolean
   message: string
-  estimated_completion_time?: number
+  total_feeds: number
+  estimated_completion_time?: number // seconds
 }
 
 export interface RefreshProgress {
+  is_active: boolean
   total_feeds: number
   completed_feeds: number
   failed_feeds: number
   current_feed_url?: string
-  is_refreshing: boolean
+  progress_percentage: number
+  estimated_time_remaining?: number // seconds
   errors: RefreshError[]
 }
 
 export interface RefreshError {
-  feed_id: number
   feed_url: string
+  feed_title?: string
   error_message: string
-  error_type: 'network' | 'parse' | 'timeout' | 'unknown'
+  error_type: string // "network", "parse", "timeout", "rate_limited", "too_many_retries", "database"
+  retry_count: number
+  timestamp: string
 }
 
 export interface RefreshSummary {
@@ -117,6 +122,17 @@ export interface RefreshSummary {
   total_processed: number
   successful_count: number
   failed_count: number
-  duration_ms: number
-  error_details: RefreshError[]
+  duration_seconds: number
+  feeds_updated: FeedRefreshStatus[]
+  errors: RefreshError[]
+}
+
+export interface FeedRefreshStatus {
+  feed_id: number
+  feed_url: string
+  feed_title?: string
+  status: string // "success", "failed", "skipped"
+  entries_added: number
+  last_fetched_at: string
+  error?: RefreshError
 } 

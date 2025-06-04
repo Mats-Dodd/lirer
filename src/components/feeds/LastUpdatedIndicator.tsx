@@ -98,7 +98,7 @@ export const LastUpdatedIndicator: React.FC<LastUpdatedIndicatorProps> = ({
       )}
       {showDetails && lastSummary && (
         <span className="text-xs">
-          ({lastSummary.successful_count}/{lastSummary.total_processed} successful, {formatDuration(lastSummary.duration_ms)})
+          ({lastSummary.successful_count}/{lastSummary.total_processed} successful, {formatDuration(lastSummary.duration_seconds * 1000)})
         </span>
       )}
     </div>

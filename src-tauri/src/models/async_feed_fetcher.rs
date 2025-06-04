@@ -5,6 +5,8 @@ use tokio::sync::{mpsc, Mutex, RwLock};
 use tokio::time::{sleep, timeout};
 use tauri_plugin_http::reqwest;
 use crate::models::feed_parser::{ParsedFeed, parse_feed_content};
+use crate::models::responses::{RefreshProgress, RefreshError, RefreshSummary, FeedRefreshStatus};
+use chrono::{DateTime, Utc};
 
 // Configuration for the async fetcher
 #[derive(Debug, Clone)]
@@ -26,6 +28,34 @@ impl Default for FetcherConfig {
             max_retries: 3,
             base_retry_delay: Duration::from_millis(500),
             max_retry_delay: Duration::from_secs(60),
+        }
+    }
+}
+
+// Progress tracking for refresh operations
+#[derive(Debug, Clone)]
+pub struct RefreshProgressState {
+    pub is_active: bool,
+    pub total_feeds: usize,
+    pub completed_feeds: usize,
+    pub failed_feeds: usize,
+    pub current_feed_url: Option<String>,
+    pub start_time: Option<Instant>,
+    pub errors: Vec<RefreshError>,
+    pub feed_statuses: Vec<FeedRefreshStatus>,
+}
+
+impl Default for RefreshProgressState {
+    fn default() -> Self {
+        Self {
+            is_active: false,
+            total_feeds: 0,
+            completed_feeds: 0,
+            failed_feeds: 0,
+            current_feed_url: None,
+            start_time: None,
+            errors: Vec::new(),
+            feed_statuses: Vec::new(),
         }
     }
 }
@@ -158,6 +188,9 @@ pub struct AsyncFeedFetcher {
     #[allow(dead_code)]
     rate_limiter: RateLimiter,
     is_running: Arc<RwLock<bool>>,
+    // Progress tracking for refresh operations
+    refresh_progress: Arc<RwLock<RefreshProgressState>>,
+    last_refresh_summary: Arc<RwLock<Option<RefreshSummary>>>,
 }
 
 impl AsyncFeedFetcher {
@@ -167,6 +200,8 @@ impl AsyncFeedFetcher {
         
         let rate_limiter = RateLimiter::new(config.rate_limit_delay);
         let is_running = Arc::new(RwLock::new(false));
+        let refresh_progress = Arc::new(RwLock::new(RefreshProgressState::default()));
+        let last_refresh_summary = Arc::new(RwLock::new(None));
 
         // Spawn the worker task
         let fetcher = AsyncFeedFetcher {
@@ -175,6 +210,8 @@ impl AsyncFeedFetcher {
             result_receiver: Arc::new(Mutex::new(result_receiver)),
             rate_limiter: rate_limiter.clone(),
             is_running: is_running.clone(),
+            refresh_progress: refresh_progress.clone(),
+            last_refresh_summary,
         };
 
         // Start the background workers
@@ -184,6 +221,7 @@ impl AsyncFeedFetcher {
             config,
             rate_limiter,
             is_running,
+            refresh_progress,
         ));
 
         fetcher
@@ -237,12 +275,139 @@ impl AsyncFeedFetcher {
         results
     }
 
+    // New methods for refresh operations
+    pub async fn start_refresh_operation(&self, total_feeds: usize) {
+        let mut progress = self.refresh_progress.write().await;
+        *progress = RefreshProgressState {
+            is_active: true,
+            total_feeds,
+            completed_feeds: 0,
+            failed_feeds: 0,
+            current_feed_url: None,
+            start_time: Some(Instant::now()),
+            errors: Vec::new(),
+            feed_statuses: Vec::new(),
+        };
+    }
+
+    pub async fn update_refresh_progress(&self, current_feed_url: Option<String>) {
+        let mut progress = self.refresh_progress.write().await;
+        progress.current_feed_url = current_feed_url;
+    }
+
+    pub async fn complete_feed_refresh(&self, feed_status: FeedRefreshStatus, error: Option<RefreshError>) {
+        let mut progress = self.refresh_progress.write().await;
+        progress.completed_feeds += 1;
+        
+        if let Some(err) = error {
+            progress.failed_feeds += 1;
+            progress.errors.push(err);
+        }
+        
+        progress.feed_statuses.push(feed_status);
+        
+        // Check if refresh is complete
+        if progress.completed_feeds >= progress.total_feeds {
+            progress.is_active = false;
+            progress.current_feed_url = None;
+            
+            // Create refresh summary
+            if let Some(start_time) = progress.start_time {
+                let duration = start_time.elapsed();
+                let summary = RefreshSummary {
+                    timestamp: Utc::now().to_rfc3339(),
+                    total_processed: progress.total_feeds,
+                    successful_count: progress.completed_feeds - progress.failed_feeds,
+                    failed_count: progress.failed_feeds,
+                    duration_seconds: duration.as_secs(),
+                    feeds_updated: progress.feed_statuses.clone(),
+                    errors: progress.errors.clone(),
+                };
+                
+                // Store the summary
+                let mut last_summary = self.last_refresh_summary.write().await;
+                *last_summary = Some(summary);
+            }
+        }
+    }
+
+    pub async fn get_refresh_progress(&self) -> RefreshProgress {
+        let progress = self.refresh_progress.read().await;
+        
+        let progress_percentage = if progress.total_feeds > 0 {
+            (progress.completed_feeds as f32 / progress.total_feeds as f32) * 100.0
+        } else {
+            0.0
+        };
+
+        let estimated_time_remaining = if progress.is_active && progress.completed_feeds > 0 {
+            if let Some(start_time) = progress.start_time {
+                let elapsed = start_time.elapsed();
+                let avg_time_per_feed = elapsed.as_secs() as f32 / progress.completed_feeds as f32;
+                let remaining_feeds = progress.total_feeds - progress.completed_feeds;
+                Some((avg_time_per_feed * remaining_feeds as f32) as u64)
+            } else {
+                None
+            }
+        } else {
+            None
+        };
+
+        RefreshProgress {
+            is_active: progress.is_active,
+            total_feeds: progress.total_feeds,
+            completed_feeds: progress.completed_feeds,
+            failed_feeds: progress.failed_feeds,
+            current_feed_url: progress.current_feed_url.clone(),
+            progress_percentage,
+            estimated_time_remaining,
+            errors: progress.errors.clone(),
+        }
+    }
+
+    pub async fn get_last_refresh_summary(&self) -> Option<RefreshSummary> {
+        let summary = self.last_refresh_summary.read().await;
+        summary.clone()
+    }
+
+    pub async fn abort_refresh(&self) {
+        let mut progress = self.refresh_progress.write().await;
+        progress.is_active = false;
+        progress.current_feed_url = None;
+    }
+
+    // Helper function to convert FeedFetchError to RefreshError
+    fn convert_fetch_error_to_refresh_error(
+        url: &str,
+        title: Option<String>,
+        error: &FeedFetchError,
+        retry_count: u32,
+    ) -> RefreshError {
+        let error_type = match error {
+            FeedFetchError::NetworkError(_) => "network",
+            FeedFetchError::ParseError(_) => "parse",
+            FeedFetchError::Timeout => "timeout",
+            FeedFetchError::RateLimited => "rate_limited",
+            FeedFetchError::TooManyRetries => "too_many_retries",
+        };
+
+        RefreshError {
+            feed_url: url.to_string(),
+            feed_title: title,
+            error_message: error.to_string(),
+            error_type: error_type.to_string(),
+            retry_count,
+            timestamp: Utc::now().to_rfc3339(),
+        }
+    }
+
     async fn worker_loop(
         mut task_receiver: mpsc::UnboundedReceiver<FeedFetchTask>,
         result_sender: mpsc::UnboundedSender<FeedFetchResult>,
         config: FetcherConfig,
         rate_limiter: RateLimiter,
         is_running: Arc<RwLock<bool>>,
+        refresh_progress: Arc<RwLock<RefreshProgressState>>,
     ) {
         let semaphore = Arc::new(tokio::sync::Semaphore::new(config.max_concurrent_requests));
         let mut task_queue = BinaryHeap::new();

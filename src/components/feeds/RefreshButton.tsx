@@ -1,25 +1,25 @@
 import React from 'react'
 import { Button } from "@/components/ui/button"
 import { RefreshProgress } from "../../types/feed"
-import { RefreshCw, CheckCircle, AlertCircle } from 'lucide-react'
+import { RefreshCw, CheckCircle, AlertTriangle } from 'lucide-react'
 
 interface RefreshButtonProps {
-  onRefresh: () => Promise<void>
-  isRefreshing: boolean
+  onRefresh: () => void
+  isRefreshing?: boolean
   progress?: RefreshProgress | null
-  error?: string | null
-  variant?: 'default' | 'outline' | 'ghost'
-  size?: 'default' | 'sm' | 'lg'
+  error?: Error | string | null
+  variant?: 'default' | 'outline' | 'secondary' | 'ghost' | 'link' | 'destructive'
+  size?: 'default' | 'sm' | 'lg' | 'icon'
   showProgress?: boolean
   disabled?: boolean
 }
 
 export const RefreshButton: React.FC<RefreshButtonProps> = ({
   onRefresh,
-  isRefreshing,
-  progress,
-  error,
-  variant = 'outline',
+  isRefreshing = false,
+  progress = null,
+  error = null,
+  variant = 'default',
   size = 'default',
   showProgress = true,
   disabled = false
@@ -35,7 +35,7 @@ export const RefreshButton: React.FC<RefreshButtonProps> = ({
     if (error) {
       return (
         <>
-          <AlertCircle className="h-4 w-4" />
+          <AlertTriangle className="h-4 w-4" />
           <span>Refresh Failed</span>
         </>
       )
@@ -64,7 +64,7 @@ export const RefreshButton: React.FC<RefreshButtonProps> = ({
     }
 
     // Check if we have a recent successful refresh
-    if (progress && !progress.is_refreshing && progress.completed_feeds > 0) {
+    if (progress && !progress.is_active && progress.completed_feeds > 0) {
       return (
         <>
           <CheckCircle className="h-4 w-4 text-green-600" />

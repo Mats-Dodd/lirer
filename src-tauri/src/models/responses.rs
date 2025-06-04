@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use crate::entities::{feed, feed_entry};
+use chrono::{DateTime, Utc};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct FeedResponse {
@@ -70,4 +71,57 @@ impl From<feed_entry::Model> for FeedEntryResponse {
             is_starred: model.is_starred,
         }
     }
+}
+
+// Refresh-related response structures
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct RefreshResponse {
+    pub success: bool,
+    pub message: String,
+    pub total_feeds: usize,
+    pub estimated_completion_time: Option<u64>, // seconds
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct RefreshProgress {
+    pub is_active: bool,
+    pub total_feeds: usize,
+    pub completed_feeds: usize,
+    pub failed_feeds: usize,
+    pub current_feed_url: Option<String>,
+    pub progress_percentage: f32,
+    pub estimated_time_remaining: Option<u64>, // seconds
+    pub errors: Vec<RefreshError>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct RefreshError {
+    pub feed_url: String,
+    pub feed_title: Option<String>,
+    pub error_message: String,
+    pub error_type: String, // "network", "parse", "timeout", "rate_limited", "too_many_retries"
+    pub retry_count: u32,
+    pub timestamp: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct RefreshSummary {
+    pub timestamp: String,
+    pub total_processed: usize,
+    pub successful_count: usize,
+    pub failed_count: usize,
+    pub duration_seconds: u64,
+    pub feeds_updated: Vec<FeedRefreshStatus>,
+    pub errors: Vec<RefreshError>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct FeedRefreshStatus {
+    pub feed_id: i32,
+    pub feed_url: String,
+    pub feed_title: Option<String>,
+    pub status: String, // "success", "failed", "skipped"
+    pub entries_added: usize,
+    pub last_fetched_at: String,
+    pub error: Option<RefreshError>,
 } 

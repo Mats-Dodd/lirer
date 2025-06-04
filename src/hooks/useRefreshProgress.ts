@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { feedApi } from '../services/feedApi'
-import { RefreshProgress, RefreshResponse, RefreshSummary } from '../types/feed'
+import { RefreshProgress, RefreshSummary } from '../types/feed'
 
 interface UseRefreshProgressReturn {
   isRefreshing: boolean
@@ -30,7 +30,7 @@ export const useRefreshProgress = (): UseRefreshProgressReturn => {
       setProgress(progressData)
       
       // If refresh is complete, stop polling and fetch summary
-      if (!progressData.is_refreshing) {
+      if (!progressData.is_active) {
         setIsRefreshing(false)
         isPollingRef.current = false
         
@@ -74,7 +74,7 @@ export const useRefreshProgress = (): UseRefreshProgressReturn => {
       setError(null)
       setIsRefreshing(true)
       
-      const response: RefreshResponse = await feedApi.refreshAllFeeds()
+      await feedApi.refreshAllFeeds()
       
       // Start polling for progress updates
       startPolling()
@@ -93,7 +93,7 @@ export const useRefreshProgress = (): UseRefreshProgressReturn => {
       setError(null)
       setIsRefreshing(true)
       
-      const response: RefreshResponse = await feedApi.refreshSingleFeed(feedId)
+      await feedApi.refreshSingleFeed(feedId)
       
       // Start polling for progress updates
       startPolling()

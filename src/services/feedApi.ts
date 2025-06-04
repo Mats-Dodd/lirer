@@ -84,5 +84,9 @@ export const feedApi = {
 
   async getLastRefreshSummary(): Promise<RefreshSummary> {
     return await invoke<RefreshSummary>("get_last_refresh_summary")
+  },
+
+  async processRefreshResults(): Promise<string> {
+    return await invoke<string>("process_refresh_results")
   }
 } 

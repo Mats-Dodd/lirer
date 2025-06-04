@@ -53,6 +53,12 @@ pub fn run() {
                 queue_feed_for_async_fetch,
                 get_async_fetch_results,
                 fetch_multiple_feeds_async,
+                // Refresh commands
+                refresh_all_feeds,
+                refresh_single_feed,
+                get_refresh_progress,
+                get_last_refresh_summary,
+                process_refresh_results,
                 // Feed Entry commands
                 create_feed_entry,
                 create_feed_with_entries,
