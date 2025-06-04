@@ -83,10 +83,6 @@ pub fn parse_feed_content(content: &str) -> Result<ParsedFeed, FeedParseError> {
         entries: parsed_entries,
     };
     
-    println!("✅ Successfully parsed feed: '{}'", parsed_feed.title);
-    println!("📰 Found {} entries", parsed_feed.entries.len());
-    println!("📰 here are the entries: {:?}", parsed_feed.entries);
-    
     Ok(parsed_feed)
 }
 

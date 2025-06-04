@@ -52,7 +52,16 @@ pub fn run() {
                 get_async_fetcher_status,
                 queue_feed_for_async_fetch,
                 get_async_fetch_results,
-                fetch_multiple_feeds_async
+                fetch_multiple_feeds_async,
+                // Feed Entry commands
+                create_feed_entry,
+                create_feed_with_entries,
+                get_feed_entries,
+                get_feed_entry_by_id,
+                update_feed_entry,
+                delete_feed_entry,
+                mark_entry_as_read,
+                mark_entry_as_starred
             ])
             .run(tauri::generate_context!())
             .expect("error while running tauri application");
